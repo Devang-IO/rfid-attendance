@@ -584,7 +584,7 @@ const fetchAllData = async () => {
   }
 };
 
-const fetchAttendance = async () => {
+const fetchAttendance = useCallback(async () => {
   if (!date) return;
   const { data, error } = await supabase
     .from("attendance_view")
@@ -604,9 +604,10 @@ const fetchAttendance = async () => {
 
   console.log("Recent attendance:", data);
   setRecentAttendance(data || []);
-};
+}, [date]);
 
-const fetchStudents = async () => {
+// Fetch students
+const fetchStudents = useCallback(async () => {
   const { data, error } = await supabase.from("students").select("*");
   if (error) {
     console.error("Error fetching students:", error);
@@ -614,9 +615,10 @@ const fetchStudents = async () => {
   }
   console.log("Students:", data);
   setStudents(data || []);
-};
+}, []);
 
-const fetchStats = async () => {
+// Fetch stats
+const fetchStats = useCallback(async () => {
   if (!date) return;
 
   const { data: totalStudents, error: totalError } = await supabase
@@ -655,9 +657,10 @@ const fetchStats = async () => {
   console.log("Stats:", { total, present, absent });
   setStats({ total, present, absent });
   setAttendanceRate(total > 0 ? (present / total) * 100 : 0);
-};
+}, [date]);
 
-const fetchLateArrivals = async () => {
+// Fetch late arrivals
+const fetchLateArrivals = useCallback(async () => {
   if (!date) return;
   const { data, error } = await supabase
     .from("attendance_view")
@@ -678,9 +681,10 @@ const fetchLateArrivals = async () => {
 
   console.log("Late arrivals:", data);
   setLateArrivals(data || []);
-};
+}, [date]);
 
-const fetchAttendanceTrend = async () => {
+// Fetch attendance trend
+const fetchAttendanceTrend = useCallback(async () => {
   if (!date) return;
   const startDate = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
   const { data, error } = await supabase
@@ -709,9 +713,10 @@ const fetchAttendanceTrend = async () => {
 
   console.log("Attendance trend:", trendData);
   setAttendanceTrend(trendData);
-};
+}, [date]);
 
-const resetAttendance = async () => {
+// Reset attendance
+const resetAttendance = useCallback(async () => {
   if (!date) return;
 
   // Delete all attendance records for the current date
@@ -731,7 +736,7 @@ const resetAttendance = async () => {
 
   // Refetch all data to update the UI
   fetchAllData();
-};
+}, [date, fetchAllData]);
 
   const recordAttendance = async (tagId: string) => {
     if (!date) return;
