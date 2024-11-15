@@ -521,10 +521,16 @@ import {
 } from "recharts";
 
 // Initialize Supabase client
-const supabase = createClient(
-  "https://hmycjepeyhrpffqwvsoy.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmeWNjZXBleWhycGZmcXd2c295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkwOTc5NDAsImV4cCI6MjA0NDY3Mzk0MH0.IrtMTIIXHnXq_InAGhOy6WsSkea2Cn7tHV0xFyzxwqg"
-);
+// const supabase = createClient(
+//   "https://hmycjepeyhrpffqwvsoy.supabase.co",
+//   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmeWNjZXBleWhycGZmcXd2c295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkwOTc5NDAsImV4cCI6MjA0NDY3Mzk0MH0.IrtMTIIXHnXq_InAGhOy6WsSkea2Cn7tHV0xFyzxwqg"
+// );
+
+// Initialize Supabase client using environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function Dashboard() {
   const [recentAttendance, setRecentAttendance] = useState([]);
