@@ -535,7 +535,7 @@ export default function Component() {
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [lateArrivals, setLateArrivals] = useState([]);
   const [attendanceTrend, setAttendanceTrend] = useState([]);
-
+// eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchAttendance();
     fetchStudents();
