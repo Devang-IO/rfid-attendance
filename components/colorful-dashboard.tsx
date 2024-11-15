@@ -535,13 +535,13 @@ export default function Component() {
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [lateArrivals, setLateArrivals] = useState([]);
   const [attendanceTrend, setAttendanceTrend] = useState([]);
-// eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     fetchAttendance();
     fetchStudents();
     fetchStats();
     fetchLateArrivals();
-    fetchAttendanceTrend();
+    fetchAttendanceTrend(); 
 
     const channel = supabase
       .channel("attendance_changes")
@@ -561,7 +561,7 @@ export default function Component() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchAttendance, fetchAttendanceTrend, fetchLateArrivals, fetchStats]);
 
   useEffect(() => {
     if (date) {
