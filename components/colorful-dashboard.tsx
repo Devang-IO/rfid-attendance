@@ -523,10 +523,10 @@ import {
 // Initialize Supabase client
 const supabase = createClient(
   "https://hmycjepeyhrpffqwvsoy.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhteWNqZXBleWhycGZmcXd2c295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkwOTc5NDAsImV4cCI6MjA0NDY3Mzk0MH0.IrtMTIIXHnXq_InAGhOy6WsSkea2Cn7tHV0xFyzxwqg"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmeWNjZXBleWhycGZmcXd2c295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkwOTc5NDAsImV4cCI6MjA0NDY3Mzk0MH0.IrtMTIIXHnXq_InAGhOy6WsSkea2Cn7tHV0xFyzxwqg"
 );
 
-export default function Component() {
+export default function Dashboard() {
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [students, setStudents] = useState([]);
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
@@ -535,14 +535,13 @@ export default function Component() {
   const [attendanceRate, setAttendanceRate] = useState(0);
   const [lateArrivals, setLateArrivals] = useState([]);
   const [attendanceTrend, setAttendanceTrend] = useState([]);
-  
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     fetchAttendance();
     fetchStudents();
     fetchStats();
     fetchLateArrivals();
-    fetchAttendanceTrend(); 
+    fetchAttendanceTrend();
 
     const channel = supabase
       .channel("attendance_changes")
@@ -562,186 +561,175 @@ export default function Component() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchAttendance, fetchAttendanceTrend, fetchLateArrivals, fetchStats]);
+  }, []);
 
   useEffect(() => {
-  if (date) {
+    if (date) {
+      fetchAllData();
+    }
+  }, [date]);
+
+  const fetchAllData = async () => {
+    try {
+      await Promise.all([
+        fetchAttendance(),
+        fetchStudents(),
+        fetchStats(),
+        fetchLateArrivals(),
+        fetchAttendanceTrend(),
+      ]);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const fetchAttendance = useCallback(async () => {
+    if (!date) return;
+
+    const { data, error } = await supabase
+      .from("attendance_view")
+      .select("*")
+      .gte("timestamp", date.toISOString().split("T")[0])
+      .lt(
+        "timestamp",
+        new Date(date.getTime() + 86400000).toISOString().split("T")[0]
+      )
+      .order("timestamp", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error("Error fetching attendance:", error);
+      return;
+    }
+
+    setRecentAttendance(data || []);
+  }, [date]);
+
+  const fetchStudents = useCallback(async () => {
+    const { data, error } = await supabase.from("students").select("*");
+    if (error) {
+      console.error("Error fetching students:", error);
+      return;
+    }
+    setStudents(data || []);
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    if (!date) return;
+
+    const { data: totalStudents, error: totalError } = await supabase
+      .from("students")
+      .select("id", { count: "exact" });
+
+    const { data: presentToday, error: presentError } = await supabase
+      .from("attendance")
+      .select("student_id", { count: "exact", distinct: true })
+      .gte("timestamp", date.toISOString().split("T")[0])
+      .lt(
+        "timestamp",
+        new Date(date.getTime() + 86400000).toISOString().split("T")[0]
+      )
+      .eq("status", "present");
+
+    if (totalError || presentError) {
+      console.error("Error fetching stats:", totalError || presentError);
+      return;
+    }
+
+    const total = totalStudents?.length || 0;
+    const present = presentToday?.length || 0;
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const currentTime = new Date();
+    let absent = 0;
+
+    if (currentTime > endOfDay) {
+      absent = total - present;
+    }
+
+    setStats({ total, present, absent });
+    setAttendanceRate(total > 0 ? (present / total) * 100 : 0);
+  }, [date]);
+
+  const fetchLateArrivals = useCallback(async () => {
+    if (!date) return;
+
+    const { data, error } = await supabase
+      .from("attendance_view")
+      .select("*")
+      .gte("timestamp", date.toISOString().split("T")[0])
+      .lt(
+        "timestamp",
+        new Date(date.getTime() + 86400000).toISOString().split("T")[0]
+      )
+      .gt("timestamp", `${date.toISOString().split("T")[0]}T09:00:00`)
+      .order("timestamp", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error("Error fetching late arrivals:", error);
+      return;
+    }
+
+    setLateArrivals(data || []);
+  }, [date]);
+
+  const fetchAttendanceTrend = useCallback(async () => {
+    if (!date) return;
+    const startDate = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("timestamp")
+      .gte("timestamp", startDate.toISOString().split("T")[0])
+      .lt(
+        "timestamp",
+        new Date(date.getTime() + 86400000).toISOString().split("T")[0]
+      );
+
+    if (error) {
+      console.error("Error fetching attendance trend:", error);
+      return;
+    }
+
+    const trendData = Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const count =
+        data?.filter(
+          (record) =>
+            new Date(record.timestamp).toDateString() === day.toDateString()
+        ).length || 0;
+      return { date: format(day, "EEE"), count };
+    });
+
+    setAttendanceTrend(trendData);
+  }, [date]);
+
+  const resetAttendance = useCallback(async () => {
+    if (!date) return;
+
+    const { error } = await supabase
+      .from("attendance")
+      .delete()
+      .gte("timestamp", date.toISOString().split("T")[0])
+      .lt(
+        "timestamp",
+        new Date(date.getTime() + 86400000).toISOString().split("T")[0]
+      );
+
+    if (error) {
+      console.error("Error resetting attendance:", error);
+      return;
+    }
+
     fetchAllData();
-  }
-}, [date]);
-
-const fetchAllData = async () => {
-  try {
-    await Promise.all([
-      fetchAttendance(),
-      fetchStudents(),
-      fetchStats(),
-      fetchLateArrivals(),
-      fetchAttendanceTrend(),
-    ]);
-  } catch (error) {
-    console.error("Error fetching data:", error);
-  }
-};
-
-const fetchAttendance = useCallback(async () => {
-  if (!date) return;
-  const { data, error } = await supabase
-    .from("attendance_view")
-    .select("*")
-    .gte("timestamp", date.toISOString().split("T")[0])
-    .lt(
-      "timestamp",
-      new Date(date.getTime() + 86400000).toISOString().split("T")[0]
-    )
-    .order("timestamp", { ascending: false })
-    .limit(5);
-
-  if (error) {
-    console.error("Error fetching attendance:", error);
-    return;
-  }
-
-  console.log("Recent attendance:", data);
-  setRecentAttendance(data || []);
-}, [date]);
-
-// Fetch students
-const fetchStudents = useCallback(async () => {
-  const { data, error } = await supabase.from("students").select("*");
-  if (error) {
-    console.error("Error fetching students:", error);
-    return;
-  }
-  console.log("Students:", data);
-  setStudents(data || []);
-}, []);
-
-// Fetch stats
-const fetchStats = useCallback(async () => {
-  if (!date) return;
-
-  const { data: totalStudents, error: totalError } = await supabase
-    .from("students")
-    .select("id", { count: "exact" });
-
-  const { data: presentToday, error: presentError } = await supabase
-    .from("attendance")
-    .select("student_id", { count: "exact", distinct: true })
-    .gte("timestamp", date.toISOString().split("T")[0])
-    .lt(
-      "timestamp",
-      new Date(date.getTime() + 86400000).toISOString().split("T")[0]
-    )
-    .eq("status", "present");
-
-  if (totalError || presentError) {
-    console.error("Error fetching stats:", totalError || presentError);
-    return;
-  }
-
-  const total = totalStudents?.length || 0;
-  const present = presentToday?.length || 0;
-
-  // Check if the current time is past the end of the day (e.g., 23:59:59)
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999); // Set to the last millisecond of the day
-
-  const currentTime = new Date();
-  let absent = 0;
-
-  if (currentTime > endOfDay) {
-    absent = total - present; // Calculate absent only if the day is over
-  }
-
-  console.log("Stats:", { total, present, absent });
-  setStats({ total, present, absent });
-  setAttendanceRate(total > 0 ? (present / total) * 100 : 0);
-}, [date]);
-
-// Fetch late arrivals
-const fetchLateArrivals = useCallback(async () => {
-  if (!date) return;
-  const { data, error } = await supabase
-    .from("attendance_view")
-    .select("*")
-    .gte("timestamp", date.toISOString().split("T")[0])
-    .lt(
-      "timestamp",
-      new Date(date.getTime() + 86400000).toISOString().split("T")[0]
-    )
-    .gt("timestamp", `${date.toISOString().split("T")[0]}T09:00:00`)
-    .order("timestamp", { ascending: false })
-    .limit(5);
-
-  if (error) {
-    console.error("Error fetching late arrivals:", error);
-    return;
-  }
-
-  console.log("Late arrivals:", data);
-  setLateArrivals(data || []);
-}, [date]);
-
-// Fetch attendance trend
-const fetchAttendanceTrend = useCallback(async () => {
-  if (!date) return;
-  const startDate = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const { data, error } = await supabase
-    .from("attendance")
-    .select("timestamp")
-    .gte("timestamp", startDate.toISOString().split("T")[0])
-    .lt(
-      "timestamp",
-      new Date(date.getTime() + 86400000).toISOString().split("T")[0]
-    );
-
-  if (error) {
-    console.error("Error fetching attendance trend:", error);
-    return;
-  }
-
-  const trendData = Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-    const count =
-      data?.filter(
-        (record) =>
-          new Date(record.timestamp).toDateString() === day.toDateString()
-      ).length || 0;
-    return { date: format(day, "EEE"), count };
-  });
-
-  console.log("Attendance trend:", trendData);
-  setAttendanceTrend(trendData);
-}, [date]);
-
-// Reset attendance
-const resetAttendance = useCallback(async () => {
-  if (!date) return;
-
-  // Delete all attendance records for the current date
-  const { error } = await supabase
-    .from("attendance")
-    .delete()
-    .gte("timestamp", date.toISOString().split("T")[0])
-    .lt(
-      "timestamp",
-      new Date(date.getTime() + 86400000).toISOString().split("T")[0]
-    );
-
-  if (error) {
-    console.error("Error resetting attendance:", error);
-    return;
-  }
-
-  // Refetch all data to update the UI
-  fetchAllData();
-}, [date, fetchAllData]);
+  }, [date]);
 
   const recordAttendance = async (tagId: string) => {
     if (!date) return;
 
-    // Check if attendance has already been recorded for this tag_id today
     const { data: existingAttendance, error: checkError } = await supabase
       .from("attendance")
       .select("id")
@@ -763,40 +751,34 @@ const resetAttendance = useCallback(async () => {
       return;
     }
 
-    // If no existing attendance, record new attendance
     const { data: student, error: studentError } = await supabase
       .from("students")
-      .select("id")
+      .select("*")
       .eq("tag_id", tagId)
       .single();
 
     if (studentError) {
-      console.error("Error fetching student:", studentError);
+      console.error("Error fetching student for tag:", studentError);
       return;
     }
 
-    if (!student) {
-      console.error("No student found with this tag ID");
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("attendance").insert({
-      student_id: student.id,
-      tag_id: tagId,
-      status: "present",
-      timestamp: new Date().toISOString(),
-    });
+    const { error: insertError } = await supabase
+      .from("attendance")
+      .insert({
+        tag_id: tagId,
+        student_id: student.id,
+        timestamp: new Date().toISOString(),
+        status: "present",
+      });
 
     if (insertError) {
-      console.error("Error inserting attendance:", insertError);
-      return;
+      console.error("Error recording attendance:", insertError);
+    } else {
+      fetchAttendance();
+      fetchStats();
+      fetchLateArrivals();
+      fetchAttendanceTrend();
     }
-
-    console.log("Attendance recorded successfully");
-    fetchAttendance();
-    fetchStats();
-    fetchLateArrivals();
-    fetchAttendanceTrend();
   };
 
   const filteredStudents = students.filter((student) =>
