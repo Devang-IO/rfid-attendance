@@ -536,32 +536,61 @@ export default function Component() {
   const [lateArrivals, setLateArrivals] = useState([]);
   const [attendanceTrend, setAttendanceTrend] = useState([]);
 
-  useEffect(() => {
-    fetchAttendance();
-    fetchStudents();
-    fetchStats();
-    fetchLateArrivals();
-    fetchAttendanceTrend(); 
+  // useEffect(() => {
+  //   fetchAttendance();
+  //   fetchStudents();
+  //   fetchStats();
+  //   fetchLateArrivals();
+  //   fetchAttendanceTrend(); 
 
-    const channel = supabase
-      .channel("attendance_changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "attendance" },
-        (payload) => {
-          console.log("New attendance record:", payload.new);
-          fetchAttendance();
-          fetchStats();
-          fetchLateArrivals();
-          fetchAttendanceTrend();
-        }
-      )
-      .subscribe();
+  //   const channel = supabase
+  //     .channel("attendance_changes")
+  //     .on(
+  //       "postgres_changes",
+  //       { event: "INSERT", schema: "public", table: "attendance" },
+  //       (payload) => {
+  //         console.log("New attendance record:", payload.new);
+  //         fetchAttendance();
+  //         fetchStats();
+  //         fetchLateArrivals();
+  //         fetchAttendanceTrend();
+  //       }
+  //     )
+  //     .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchAttendance, fetchAttendanceTrend, fetchLateArrivals, fetchStats]);
+  //   return () => {
+  //     supabase.removeChannel(channel);
+  //   };
+  // }, [fetchAttendance, fetchAttendanceTrend, fetchLateArrivals, fetchStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+  fetchAttendance();
+  fetchStudents();
+  fetchStats();
+  fetchLateArrivals();
+  fetchAttendanceTrend();
+
+  const channel = supabase
+    .channel("attendance_changes")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "attendance" },
+      (payload) => {
+        console.log("New attendance record:", payload.new);
+        fetchAttendance();
+        fetchStats();
+        fetchLateArrivals();
+        fetchAttendanceTrend();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [fetchAttendance, fetchAttendanceTrend, fetchLateArrivals, fetchStats]);
+
+  
 
   useEffect(() => {
     if (date) {
